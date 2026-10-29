@@ -40,22 +40,23 @@ def AreYouWinningSon():
                         Board[0][2]=='O' and Board[1][1]=='O' and Board[2][0]=='O'):
         PlayerOWinning = True
 #made by conrad ends
+TOKENS = {
+    13: {
+        'x': "╲ ╱ ╳ ╱ ╲",
+        'o': "╭─╮│ │╰─╯",
+        'grid':1,
+    },
+    7: {'x': "X", 'o': "O", 'grid':1,},
+    3: {'x': "X", 'o': "O", 'grid':0,},
+}
+DECALS = {
+    'vert': "│",
+    'horiz': "─",
+    'intersect': "┼",
+}
 
-def main(screen):
-    TOKENS = {
-        13: {
-            'x': "╲ ╱ ╳ ╱ ╲",
-            'o': "╭─╮│ │╰─╯",
-            'grid':1,
-        },
-        7: {'x': "X", 'o': "O", 'grid':1,},
-        3: {'x': "X", 'o': "O", 'grid':0,},
-    }
-    DECALS = {
-        'vert': "│",
-        'horiz': "─",
-        'intersect': "┼",
-    }
+def init(screen):
+    global TOKENS, DECALS
     # Get maximum window size
     board_size = min((curses.LINES,curses.COLS))
     while not board_size in TOKENS.keys():
@@ -83,10 +84,11 @@ def main(screen):
             )]
         windows += [row]
     # Decorate board
+    
     for i in range(tile_size + padding_size):
         boardwin.addstr(" " * padding_size + (" " * tile_size + DECALS['vert'] * padding_size) * 2 + " " * tile_size + " " * padding_size)
     if padding_size > 0:
-        boardwin.addstr(DECALS['horiz'] * padding_size + (DECALS['horiz'] * tile_size + DECALS['intersect']) * 2 + DECALS['horiz'] * tile_size + DECALS['horiz'] * padding_size)
+        boardwin.addstr(DECALS['horiz']*padding_size + (DECALS['horiz']*tile_size + DECALS['intersect'])*2 + DECALS['horiz']*tile_size + DECALS['horiz']*padding_size)
     for i in range(tile_size):
         boardwin.addstr(" " * padding_size + (" " * tile_size + DECALS['vert'] * padding_size) * 2 + " " * tile_size + " " * padding_size)
     if padding_size > 0:
@@ -104,7 +106,45 @@ def main(screen):
             token = __import__("random").choice(('o','x'))
             win.addstr(TOKENS[board_size][token][:-1])
             win.insstr(TOKENS[board_size][token][-1])
-            win.refresh()
-    boardwin.getkey()
+            win.noutrefresh()
+    curses.doupdate()
+    return windows, boardwin
+
+def select_move(board, windows, selected):
+    x,y = selected
+    oldwin = windows[x][y]
+    win = oldwin
+    oldwin.bkgd(" ",curses.A_REVERSE)
+    oldwin.refresh()
+    k = board.getkey()
+    while not (k in ["\n", " ", curses.KEY_ENTER]):
+        oldwin = win
+        match k:
+            case curses.KEY_UP | "k":
+                x = x-1 if x > 0 else x
+            case curses.KEY_DOWN | "j":
+                x = x+1 if x < 2 else x
+            case curses.KEY_LEFT | "h":
+                y = y-1 if y > 0 else y
+            case curses.KEY_RIGHT | "l":
+                y = y+1 if y < 2 else y
+        win = windows[x][y]
+        oldwin.bkgd(" ",0)
+        oldwin.noutrefresh()
+        win.bkgd(" ",curses.A_REVERSE)
+        win.noutrefresh()
+        curses.doupdate()
+        k = board.getkey()
+    win.bkgd(" ",0)
+    win.refresh()
+    return x,y
+
+def main(screen):
+    global Playing, PlayerX, PlayerO, Board, PlayerTurn
+    windows, board = init(screen)
+    cursor_style = curses.curs_set(0)
+    selected = {'x': (1,1,), 'y': (1,1,),}
+    #while Playing:
+    selected[PlayerTurn.lower()] = select_move(board, windows, selected[PlayerTurn.lower()])
 if __name__=="__main__":
     curses.wrapper(main)
