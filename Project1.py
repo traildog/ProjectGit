@@ -22,7 +22,7 @@ PlayerTurn = 'X'
 #print(Board[2])
 
 #Make sure this part is run after every move
-def AreYouWinningSon():
+def AreYouWinningSon(): #A giant blob of a if to figure out when someone wins
     global Board,PlayerXWinning,PlayerOWinning
     if Board[0]=='XXX' or Board[1]=='XXX' or Board[2]=='XXX' or (
         Board[0][0]=='X' and Board[1][0]=='X' and Board[2][0]=='X') or (
