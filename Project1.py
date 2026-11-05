@@ -1,3 +1,4 @@
+#!/usr/bin/python3.14
 #Made by Conrad Boltz, and Declan Mancilla
 import curses
 
@@ -69,6 +70,7 @@ def init(screen):
     margin_horizontal = (curses.COLS - board_size) // 2
     margin_vertical = (curses.LINES - board_size) // 2
     boardwin = curses.newwin(board_size, board_size, margin_vertical, margin_horizontal)
+
     # Populate board with token slots
     padding_size = TOKENS[board_size]['grid']
     tile_size = (board_size - (4 * padding_size)) // 3
@@ -84,7 +86,6 @@ def init(screen):
             )]
         windows += [row]
     # Decorate board
-    
     for i in range(tile_size + padding_size):
         boardwin.addstr(" " * padding_size + (" " * tile_size + DECALS['vert'] * padding_size) * 2 + " " * tile_size + " " * padding_size)
     if padding_size > 0:
@@ -104,11 +105,30 @@ def init(screen):
     for row in windows:
         for win in row:
             token = __import__("random").choice(('o','x'))
+            # temporary placeholder
             win.addstr(TOKENS[board_size][token][:-1])
             win.insstr(TOKENS[board_size][token][-1])
             win.noutrefresh()
     curses.doupdate()
     return windows, boardwin
+
+def parse_arrows(window) -> str:
+    k = window.getkey()
+    if k == "[":
+        k = window.getkey()
+        match k:
+            case "A":
+                return curses.KEY_UP
+            case "B":
+                return curses.KEY_DOWN
+            case "C":
+                return curses.KEY_RIGHT
+            case "D":
+                return curses.KEY_LEFT
+            case _:
+                window.ungetch(k)
+                return "["
+    return k
 
 def select_move(board, windows, selected):
     x,y = selected
@@ -118,15 +138,17 @@ def select_move(board, windows, selected):
     oldwin.refresh()
     k = board.getkey()
     while not (k in ["\n", " ", curses.KEY_ENTER]):
+        if k == "\x1b":
+            k = parse_arrows(board)
         oldwin = win
         match k:
-            case curses.KEY_UP | "k":
+            case curses.KEY_UP | "k" | "w":
                 x = x-1 if x > 0 else x
-            case curses.KEY_DOWN | "j":
+            case curses.KEY_DOWN | "j" | "s":
                 x = x+1 if x < 2 else x
-            case curses.KEY_LEFT | "h":
+            case curses.KEY_LEFT | "h" | "a":
                 y = y-1 if y > 0 else y
-            case curses.KEY_RIGHT | "l":
+            case curses.KEY_RIGHT | "l" | "d":
                 y = y+1 if y < 2 else y
         win = windows[x][y]
         oldwin.bkgd(" ",0)
