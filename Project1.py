@@ -15,7 +15,7 @@ PlayerOWinning = False
 #Start while loop here
 PlayerX = input('What is the name of the first player?')
 PlayerO = input('What is the name of the second player?')
-Board = ['___','___','___']
+Board = [['_','_','_'],['_','_','_'],['_','_','_']]
 PlayerTurn = 'X'
 #While playing == true repeat game
 #Example of printing the board
@@ -104,10 +104,6 @@ def init(screen):
     boardwin.refresh()
     for row in windows:
         for win in row:
-            token = __import__("random").choice(('o','x'))
-            # temporary placeholder
-            win.addstr(TOKENS[board_size][token][:-1])
-            win.insstr(TOKENS[board_size][token][-1])
             win.noutrefresh()
     curses.doupdate()
     return windows, boardwin
@@ -130,8 +126,9 @@ def parse_arrows(window) -> str:
                 return "["
     return k
 
-def select_move(board, windows, selected):
-    x,y = selected
+def select_move(board, windows, selected: tuple) -> tuple:
+    # transforms `selected` (previous selection coordinates) into new coordinates
+    y,x = selected
     oldwin = windows[x][y]
     win = oldwin
     oldwin.bkgd(" ",curses.A_REVERSE)
@@ -159,14 +156,31 @@ def select_move(board, windows, selected):
         k = board.getkey()
     win.bkgd(" ",0)
     win.refresh()
-    return x,y
+    return y,x
+def update_board(board, windows, state, target):
+    global TOKENS, PlayerTurn
+    board_size = min(board.getmaxyx())
+    win = windows[target[1]][target[0]]
+    win.clear()
+    win.addstr(TOKENS[board_size][PlayerTurn.lower()][:-1])
+    win.insstr(TOKENS[board_size][PlayerTurn.lower()][-1])
+    win.refresh()
 
 def main(screen):
-    global Playing, PlayerX, PlayerO, Board, PlayerTurn
+    global Playing, PlayerX, PlayerO, Board, PlayerTurn, PlayerXWinning, PlayerOWinning
     windows, board = init(screen)
     cursor_style = curses.curs_set(0)
-    selected = {'x': (1,1,), 'y': (1,1,),}
-    #while Playing:
-    selected[PlayerTurn.lower()] = select_move(board, windows, selected[PlayerTurn.lower()])
+    selected = {'x': (1,1,), 'o': (1,1,),}
+    while Playing:
+        selected[PlayerTurn.lower()] = select_move(board, windows, selected[PlayerTurn.lower()])
+        y,x = selected[PlayerTurn.lower()]
+        if Board[y][x] == "_":
+            Board[y][x] = PlayerTurn
+            update_board(board, windows, Board, selected[PlayerTurn.lower()])
+        AreYouWinningSon()
+        if PlayerXWinning or PlayerOWinning:
+            Playing = False
+        else:
+            PlayerTurn = "X" if PlayerTurn == "O" else "O"
 if __name__=="__main__":
     curses.wrapper(main)
