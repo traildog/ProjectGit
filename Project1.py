@@ -15,7 +15,7 @@ PlayerOWinning = False
 #Start while loop here
 PlayerX = input('What is the name of the first player?')
 PlayerO = input('What is the name of the second player?')
-Board = [['_','_','_'],['_','_','_'],['_','_','_']]
+Board = ['___','___','___']
 PlayerTurn = 'X'
 #While playing == true repeat game
 #Example of printing the board
@@ -175,7 +175,9 @@ def main(screen):
         selected[PlayerTurn.lower()] = select_move(board, windows, selected[PlayerTurn.lower()])
         y,x = selected[PlayerTurn.lower()]
         if Board[y][x] == "_":
-            Board[y][x] = PlayerTurn
+            row = list(Board[y])
+            row[x] = PlayerTurn
+            Board[y] = "".join(row)
             update_board(board, windows, Board, selected[PlayerTurn.lower()])
         AreYouWinningSon()
         if PlayerXWinning or PlayerOWinning:
