@@ -1,6 +1,10 @@
 #!/usr/bin/python3.14
 #Made by Conrad Boltz, and Declan Mancilla
-import curses
+try:
+    import curses
+except ModuleNotFoundError:
+    if input("install windows-curses from pypi? ('yes' to continue) ") == "yes":
+        __import__("subprocess").check_call([__import__("sys").executable, '-m', 'pip', 'install', 'windows-curses'])
 
 #Put a do you want to see your stats or play the game here.
 
