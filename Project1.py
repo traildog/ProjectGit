@@ -3,9 +3,29 @@
 try:
     import curses
 except ModuleNotFoundError:
+    print("curses implementation not found, but required for program")
     if input("install windows-curses from pypi? ('yes' to continue) ") == "yes":
-        __import__("subprocess").check_call([__import__("sys").executable, '-m', 'pip', 'install', 'windows-curses'])
-
+        import subprocess
+        import sys
+        try:
+            subprocess.check_call(['py', '-%d.%d' % (sys.version_info.major, sys.version_info.minor), '-m', 'pip', 'install', 'windows-curses'])
+        except CalledProcessError as error:
+            print("unable to install; exiting")
+            exit(error.returncode)
+        # run self as new process
+        argv = [sys.executable]
+        argv += [*sys.argv] if sys.argv != [""] else []
+        returncode = subprocess.run(argv).returncode
+        # cleanup by uninstalling windows-curses
+        # requires user confirmation by default
+        try:
+            subprocess.check_call(['py', '-%d.%d' % (sys.version_info.major, sys.version_info.minor), '-m', 'pip', 'uninstall', 'windows-curses'])
+        except CalledProcesssError as error:
+            print("unable to uninstall; exiting")
+            exit(error.returncode)
+        exit(returncode)
+    else:
+        exit()
 #Put a do you want to see your stats or play the game here.
 
 #List of Win/Loss/Tie for each name with the name as key to access it and display as pie chart.
