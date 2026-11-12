@@ -291,6 +291,21 @@ def updated_scores(PlayerX, PlayerO, PlayerXWinning, PlayerOWinning):
     file.close()
     return scores
 
+def view_scores():
+    scores = {}
+    with open("scores","r") as file:
+        try:
+            scores = json.load(file)
+        except:
+            scores = {}
+    keys = list(scores.keys())
+    yvalues = [normalized_score(score)["win"] for score in scores.values()]
+    xvalues = list(range(len(keys)))
+    pyplot.bar(xvalues, yvalues)
+    pyplot.xticks(xvalues, yvalues)
+    pyplot.title("Player wins")
+    pyplot.show()
+
 def main(screen):
     global Playing, PlayerX, PlayerO, Board, PlayerTurn, PlayerXWinning, PlayerOWinning, SCORES_FORMAT
     # invisible cursor: supported by most terminals but not guaranteed
@@ -305,7 +320,11 @@ def main(screen):
     while True:
         screen.noutrefresh()
         windows, board, menu = init(screen)
-        if not start_menu(menu):
+        result = start_menu(menu)
+        if result:
+            if result == -1:
+                view_scores()
+        else:
             break
         board.touchwin()
         board.refresh()
