@@ -97,6 +97,7 @@ def init(screen):
     margin_horizontal = (curses.COLS - board_size) // 2
     margin_vertical = (curses.LINES - board_size) // 2
     boardwin = curses.newwin(board_size, board_size, margin_vertical, margin_horizontal)
+    menuwin = curses.newwin(board_size, board_size*3, margin_vertical, (curses.COLS-board_size*3)//2)
 
     # Populate board with token slots
     padding_size = TOKENS[board_size]['grid']
@@ -133,7 +134,7 @@ def init(screen):
         for win in row:
             win.noutrefresh()
     curses.doupdate()
-    return windows, boardwin
+    return windows, boardwin, menuwin
 
 def parse_arrows(window) -> str:
     k = window.getkey()
@@ -184,6 +185,7 @@ def select_move(board, windows, selected: tuple) -> tuple:
     win.bkgd(" ",0)
     win.refresh()
     return y,x
+
 def update_board(board, windows, state, target):
     global TOKENS, PlayerTurn
     board_size = min(board.getmaxyx())
@@ -192,8 +194,50 @@ def update_board(board, windows, state, target):
     win.addstr(TOKENS[board_size][PlayerTurn.lower()][:-1])
     win.insstr(TOKENS[board_size][PlayerTurn.lower()][-1])
     win.refresh()
-def start_menu():
-    return True
+
+def start_menu(menuwin):
+    global PlayerX, PlayerO, PlayerXWinning, PlayerOWinning, Playing, Board, TOKENS
+    # first call to start_menu
+    if Playing:
+        header = "Tic Tac Toe"
+    else:
+        header = "%s %s!" % (PlayerX if PlayerXWinning else PlayerO, "Wins") if PlayerXWinning or PlayerOWinning else "Draw!"
+    height,width = menuwin.getmaxyx()
+    border = height > min(TOKENS.keys())
+    margin = 1 if border else 0
+    y = 0
+    y += 1 if border else 0
+    menuwin.insstr(y,(width-len(header))//2,header)
+    if height - 2*margin - 1 > 3:
+        y = height - margin - 3
+        menuwin.insstr(y,margin,"1 - Play%s" % ("" if Playing else " again"))
+        y += 1
+        menuwin.insstr(y, margin, "2 - View scores")
+        y += 1
+        menuwin.insstr(y, margin, "3 - Quit")
+    else:
+        menuwin.insstr(height - margin, 0, f"1: Play{'' if Playing else ' again'} 2: View Scores 3: Quit")
+    menuwin.border() if border else None
+    action = False
+    while True:
+        k = menuwin.getkey()
+        match k:
+            case "1": # play again
+                action = 1
+            case "2": # view scores
+                action = -1
+            case "3": # quit
+                action = 0
+            case _:
+                continue
+        break
+    Playing = True
+    PlayerXWinning = False
+    PlayerOWinning = False
+    Board = ['___','___','___']
+    menuwin.clear()
+    menuwin.noutrefresh()
+    return action
 
 def normalized_score(serialized) -> dict:
     if type(serialized) != dict:
@@ -249,29 +293,34 @@ def updated_scores(PlayerX, PlayerO, PlayerXWinning, PlayerOWinning):
 
 def main(screen):
     global Playing, PlayerX, PlayerO, Board, PlayerTurn, PlayerXWinning, PlayerOWinning, SCORES_FORMAT
-    # supported by most terminals but not guaranteed
+    # invisible cursor: supported by most terminals but not guaranteed
     try:
         cursor_style = curses.curs_set(0)
     except:
         cursor_style = -1
-    while start_menu():
+    # only available with ncurses backend, no real consequences if it fails
+    with contextlib.suppress(Exception):
+        curses.assume_default_colors(7,0)
+
+    while True:
         screen.noutrefresh()
-        windows, board = init(screen)
-        selected = {'x': (1,1,), 'o': (1,1,),}
-        Playing = True
-        PlayerXWinning = False
-        PlayerOWinning = False
-        Board = ['___','___','___']
+        windows, board, menu = init(screen)
+        if not start_menu(menu):
+            break
+        board.touchwin()
+        board.refresh()
+        selected = (1,1,)
         while Playing:
-            selected[PlayerTurn.lower()] = select_move(board, windows, selected[PlayerTurn.lower()])
-            y,x = selected[PlayerTurn.lower()]
+            selected = select_move(board, windows, selected)
+            y,x = selected
             if Board[y][x] == "_":
                 row = list(Board[y])
                 row[x] = PlayerTurn
                 Board[y] = "".join(row)
-                update_board(board, windows, Board, selected[PlayerTurn.lower()])
+                update_board(board, windows, Board, selected)
             AreYouWinningSon()
             if PlayerXWinning or PlayerOWinning or not any(["_" in row for row in Board]):
+                # must set to false for start_menu to report score
                 Playing = False
             else:
                 PlayerTurn = "X" if PlayerTurn == "O" else "O"
