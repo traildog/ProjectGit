@@ -2,6 +2,7 @@
 #Made by Conrad Boltz, and Declan Mancilla
 import contextlib
 import json
+import matplotlib.pyplot as pyplot
 try:
     import curses
 except ModuleNotFoundError:
@@ -302,7 +303,7 @@ def view_scores():
     yvalues = [normalized_score(score)["win"] for score in scores.values()]
     xvalues = list(range(len(keys)))
     pyplot.bar(xvalues, yvalues)
-    pyplot.xticks(xvalues, yvalues)
+    pyplot.xticks(keys, yvalues)
     pyplot.title("Player wins")
     pyplot.show()
 
