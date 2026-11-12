@@ -1,5 +1,7 @@
 #!/usr/bin/python3.14
 #Made by Conrad Boltz, and Declan Mancilla
+import contextlib
+import json
 try:
     import curses
 except ModuleNotFoundError:
@@ -79,6 +81,7 @@ DECALS = {
     'horiz': "─",
     'intersect': "┼",
 }
+SCORES_FORMAT = {"win":0,"loss":0,"draw":0,}
 
 def init(screen):
     global TOKENS, DECALS
@@ -189,24 +192,92 @@ def update_board(board, windows, state, target):
     win.addstr(TOKENS[board_size][PlayerTurn.lower()][:-1])
     win.insstr(TOKENS[board_size][PlayerTurn.lower()][-1])
     win.refresh()
+def start_menu():
+    return True
+
+def normalized_score(serialized) -> dict:
+    if type(serialized) != dict:
+        serialized = {}
+    serialized = SCORES_FORMAT | serialized
+    for key,value in SCORES_FORMAT.items():
+        if type(serialized[key]) != type(value):
+            serialized[key] = value
+    return serialized
+
+def increment_win(scores, winning, losing):
+    for player in winning, losing:
+        score = normalized_score(scores.get(player))
+        score["win" if player == winning else "loss"] += 1
+        scores[player] = score
+
+def increment_draw(scores, player1, player2):
+    for player in player1, player2:
+        score = normalized_score(scores.get(player))
+        score["draw"] += 1
+        scores[player] = score
+
+def updated_scores(PlayerX, PlayerO, PlayerXWinning, PlayerOWinning):
+    file = None
+    scores = {}
+    try:
+        file = open("scores","r+")
+    except FileNotFoundError:
+        # make sure someone has created the file
+        with contextlib.suppress(FileExistsError):
+            file = open("scores", "x")
+            file.close()
+        file = open("scores","r+")
+
+    try:
+        scores = json.loads(file.read())
+    except:
+        # either a json deserialization error or an io error
+        # probably not worth attempting to repair data in either case
+        scores = {}
+    if not (PlayerXWinning or PlayerOWinning):
+        increment_draw(scores, PlayerX, PlayerO)
+    if PlayerXWinning:
+        increment_win(scores, PlayerX, PlayerO)
+    if PlayerOWinning:
+        increment_win(scores, PlayerO, PlayerX)
+    # write scores back to file
+    file.seek(0)
+    file.write(json.dumps(scores))
+    file.truncate()
+    file.close()
+    return scores
 
 def main(screen):
-    global Playing, PlayerX, PlayerO, Board, PlayerTurn, PlayerXWinning, PlayerOWinning
-    windows, board = init(screen)
-    cursor_style = curses.curs_set(0)
-    selected = {'x': (1,1,), 'o': (1,1,),}
-    while Playing:
-        selected[PlayerTurn.lower()] = select_move(board, windows, selected[PlayerTurn.lower()])
-        y,x = selected[PlayerTurn.lower()]
-        if Board[y][x] == "_":
-            row = list(Board[y])
-            row[x] = PlayerTurn
-            Board[y] = "".join(row)
-            update_board(board, windows, Board, selected[PlayerTurn.lower()])
-        AreYouWinningSon()
-        if PlayerXWinning or PlayerOWinning or not any(["_" in row for row in Board]):
-            Playing = False
-        else:
-            PlayerTurn = "X" if PlayerTurn == "O" else "O"
+    global Playing, PlayerX, PlayerO, Board, PlayerTurn, PlayerXWinning, PlayerOWinning, SCORES_FORMAT
+    # supported by most terminals but not guaranteed
+    try:
+        cursor_style = curses.curs_set(0)
+    except:
+        cursor_style = -1
+    while start_menu():
+        screen.noutrefresh()
+        windows, board = init(screen)
+        selected = {'x': (1,1,), 'o': (1,1,),}
+        Playing = True
+        PlayerXWinning = False
+        PlayerOWinning = False
+        Board = ['___','___','___']
+        while Playing:
+            selected[PlayerTurn.lower()] = select_move(board, windows, selected[PlayerTurn.lower()])
+            y,x = selected[PlayerTurn.lower()]
+            if Board[y][x] == "_":
+                row = list(Board[y])
+                row[x] = PlayerTurn
+                Board[y] = "".join(row)
+                update_board(board, windows, Board, selected[PlayerTurn.lower()])
+            AreYouWinningSon()
+            if PlayerXWinning or PlayerOWinning or not any(["_" in row for row in Board]):
+                Playing = False
+            else:
+                PlayerTurn = "X" if PlayerTurn == "O" else "O"
+        score = updated_scores(PlayerX, PlayerO, PlayerXWinning, PlayerOWinning)
+        del windows, board
+    if cursor_style >= 0:
+        curses.curs_set(cursor_style)
 if __name__=="__main__":
     curses.wrapper(main)
