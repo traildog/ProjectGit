@@ -303,7 +303,7 @@ def view_scores():
     yvalues = [normalized_score(score)["win"] for score in scores.values()]
     xvalues = list(range(len(keys)))
     pyplot.bar(xvalues, yvalues)
-    pyplot.xticks(keys, yvalues)
+    pyplot.xticks(ticks=xvalues, labels=keys)
     pyplot.title("Player wins")
     pyplot.show()
 
