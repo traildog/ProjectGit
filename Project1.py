@@ -325,7 +325,7 @@ def main(screen):
         if result:
             if result == -1:
                 view_scores()
-            continue
+                continue
         else:
             break
         board.touchwin()
