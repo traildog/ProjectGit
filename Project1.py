@@ -160,7 +160,7 @@ def select_move(board, windows, selected: tuple) -> tuple:
     y,x = selected
     oldwin = windows[x][y]
     win = oldwin
-    oldwin.bkgd(" ",curses.A_REVERSE)
+    oldwin.bkgd("=",curses.A_REVERSE)
     oldwin.refresh()
     k = board.getkey()
     while not (k in ["\n", " ", curses.KEY_ENTER]):
@@ -179,7 +179,7 @@ def select_move(board, windows, selected: tuple) -> tuple:
         win = windows[x][y]
         oldwin.bkgd(" ",0)
         oldwin.noutrefresh()
-        win.bkgd(" ",curses.A_REVERSE)
+        win.bkgd("=",curses.A_REVERSE)
         win.noutrefresh()
         curses.doupdate()
         k = board.getkey()
