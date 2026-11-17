@@ -84,6 +84,7 @@ DECALS = {
 }
 SCORES_FORMAT = {"win":0,"loss":0,"draw":0,}
 
+# creates windows and adds board decorations (tictactoe grid)
 def init(screen):
     global TOKENS, DECALS
     # Get maximum window size
@@ -137,6 +138,8 @@ def init(screen):
     curses.doupdate()
     return windows, boardwin, menuwin
 
+# curses doesn't seem to parse arrow keys on its own
+# windows doesn't seem to emit any escape sequence, but this parses ^[[A,^[[B,^[[C,^[[D to arrow keys on other platforms
 def parse_arrows(window) -> str:
     k = window.getkey()
     if k == "[":
@@ -155,8 +158,11 @@ def parse_arrows(window) -> str:
                 return "["
     return k
 
+# transforms `selected` (previous selection coordinates) into new coordinates
+# also displays currently focused board slot using curses.window.bkgd
+# on platforms with xterm compatible terminals, curses.A_REVERSE is a valid attribute and looks nice
+# on windows, this is apparently unsupported, so instead we use "=" as the background
 def select_move(board, windows, selected: tuple) -> tuple:
-    # transforms `selected` (previous selection coordinates) into new coordinates
     y,x = selected
     oldwin = windows[x][y]
     win = oldwin
@@ -187,6 +193,7 @@ def select_move(board, windows, selected: tuple) -> tuple:
     win.refresh()
     return y,x
 
+# updates the window at coordinates `target` to have current player token
 def update_board(board, windows, state, target):
     global TOKENS, PlayerTurn
     board_size = min(board.getmaxyx())
@@ -196,6 +203,7 @@ def update_board(board, windows, state, target):
     win.insstr(TOKENS[board_size][PlayerTurn.lower()][-1])
     win.refresh()
 
+# show cool start menu, choose action, and reset game state
 def start_menu(menuwin):
     global PlayerX, PlayerO, PlayerXWinning, PlayerOWinning, Playing, Board, TOKENS
     # first call to start_menu
@@ -240,6 +248,7 @@ def start_menu(menuwin):
     menuwin.noutrefresh()
     return action
 
+# convert untrusted score (from scores file) to a dictionary guaranteed to have all properties of SCORES_FORMAT
 def normalized_score(serialized) -> dict:
     if type(serialized) != dict:
         serialized = {}
@@ -249,18 +258,21 @@ def normalized_score(serialized) -> dict:
             serialized[key] = value
     return serialized
 
+# Add win to `winning` and loss to `losing`
 def increment_win(scores, winning, losing):
     for player in winning, losing:
         score = normalized_score(scores.get(player))
         score["win" if player == winning else "loss"] += 1
         scores[player] = score
 
+# Add draw to both players
 def increment_draw(scores, player1, player2):
     for player in player1, player2:
         score = normalized_score(scores.get(player))
         score["draw"] += 1
         scores[player] = score
 
+# Update saved scores and return
 def updated_scores(PlayerX, PlayerO, PlayerXWinning, PlayerOWinning):
     file = None
     scores = {}
@@ -272,7 +284,8 @@ def updated_scores(PlayerX, PlayerO, PlayerXWinning, PlayerOWinning):
             file = open("scores", "x")
             file.close()
         file = open("scores","r+")
-
+        # during one test, this raised a permission error on windows
+        # i was unable to consistently reproduce it
     try:
         scores = json.loads(file.read())
     except:
@@ -294,11 +307,11 @@ def updated_scores(PlayerX, PlayerO, PlayerXWinning, PlayerOWinning):
 
 def view_scores():
     scores = {}
-    with open("scores","r") as file:
-        try:
+    try:
+        with open("scores","r") as file:
             scores = json.load(file)
-        except:
-            scores = {}
+    except:
+        scores = {}
     keys = list(scores.keys())
     yvalues = [normalized_score(score)["win"] for score in scores.values()]
     xvalues = list(range(len(keys)))
@@ -318,20 +331,23 @@ def main(screen):
     with contextlib.suppress(Exception):
         curses.assume_default_colors(7,0)
 
+    # Repeat until user quits
     while True:
         screen.noutrefresh()
         windows, board, menu = init(screen)
+        # start_menu returns 1 for "play again", -1 for "view scores", and 0 for "quit"
         result = start_menu(menu)
-        if result:
+        if result: # -1, 1 is truthy
             if result == -1:
                 view_scores()
                 continue
-        else:
+        else: # 0 is falsy
             break
         board.touchwin()
         board.refresh()
         selected = (1,1,)
         while Playing:
+            # select_move returns coordinates of chosen window
             selected = select_move(board, windows, selected)
             y,x = selected
             if Board[y][x] == "_":
@@ -340,8 +356,10 @@ def main(screen):
                 Board[y] = "".join(row)
                 update_board(board, windows, Board, selected)
             else:
+                # don't skip turn on invalid placement
                 continue
             AreYouWinningSon()
+            # if Board contains "_" there is still a valid move for someone
             if PlayerXWinning or PlayerOWinning or not any(["_" in row for row in Board]):
                 # must set to false for start_menu to report score
                 Playing = False
@@ -350,6 +368,7 @@ def main(screen):
         score = updated_scores(PlayerX, PlayerO, PlayerXWinning, PlayerOWinning)
         del windows, board
     if cursor_style >= 0:
+        # reset to starting state
         curses.curs_set(cursor_style)
 if __name__=="__main__":
     curses.wrapper(main)
