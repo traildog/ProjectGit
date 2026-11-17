@@ -1,5 +1,6 @@
 #!/usr/bin/python3.14
 #Made by Conrad Boltz, and Declan Mancilla
+#Progress synced using github at https://github.com/traildog/ProjectGit
 import contextlib
 import json
 import matplotlib.pyplot as pyplot
