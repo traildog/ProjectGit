@@ -339,6 +339,8 @@ def main(screen):
                 row[x] = PlayerTurn
                 Board[y] = "".join(row)
                 update_board(board, windows, Board, selected)
+            else:
+                continue
             AreYouWinningSon()
             if PlayerXWinning or PlayerOWinning or not any(["_" in row for row in Board]):
                 # must set to false for start_menu to report score
